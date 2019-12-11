@@ -4,16 +4,13 @@ import re
 import random
 import importlib
 import base64
-from pathlib import Path
+import pathlib
 import sys 
 import graphviz as gv
 
 import os
-os.environ["PATH"] += os.pathsep + 'C:/tools/Anaconda3/Library/bin/graphviz'
+os.environ["PATH"] += os.pathsep 
 
-#PythonInterpreter="\"C:\Applications and Installers\PortableApps\Portable Python 3.2.1.1\App\python.exe\""
-#PythonInterpreter="python.exe"
-#PythonInterpreter= str( Path('C:/ProgramData/Anaconda3/python.exe').resolve() )
 PythonInterpreter=sys.executable
 
 # The various templates for rendering the parts of the exam
@@ -247,9 +244,8 @@ def RunCode( code ):
     f.write(code)
     f.close()
 
-#    result = "<div class=\"codeoutput\"><code><pre>" + subprocess.check_output( PythonInterpreter + " " + "tmp.py", stderr=subprocess.STDOUT, universal_newlines=True, shell = True ) + "</pre></code></div>"
     result = subprocess.check_output( PythonInterpreter + " " + "tmp.py", stderr=subprocess.STDOUT, universal_newlines=True, shell = True )
-    subprocess.call(["del", "tmp.py"], shell=True)
+    pathlib.Path("tmp.py").unlink()
     return result
 
 def ScrambleCode( code ):
