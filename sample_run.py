@@ -1,7 +1,10 @@
+#!/usr/bin/env python
+
 import sys
 import os
-from pathlib import Path
+import pathlib
 import platform
+import subprocess
 
 # set HOME=%HOMEDRIVE%\%HOMEPATH%
 # set COURSE=NTNU Simultaneous Localization and Mapping
@@ -11,32 +14,65 @@ import platform
 # set TEMPLATE=%EXAMDIR%\Templates
 # set CODEDIR=%ROOTDIR%\Code
 
-COURSE = 'Machine Learning'
+COURSE = 'Simultaneous Localization and Mapping'
 YEAR = 2019
-EXAMTYPE = 'Final Exam'
+EXAMTYPE = 'Midterm'
 UNIVERSITY = 'NTNU'
 
+class cd:
+    """Context manager for changing the current working directory"""
+    def __init__(self, newPath):
+        self.newPath = pathlib.Path(newPath).expanduser().resolve()
+
+    def __enter__(self):
+        self.savedPath = pathlib.Path.cwd()
+        os.chdir(self.newPath)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.savedPath)
+
+GIT_CMD = "git"
+
+def runCommand( cmd ):
+    try:
+        o = subprocess.check_output( cmd, shell=True )
+    except subprocess.CalledProcessError as e:
+        print("ERROR", e.output)
+        out = None
+    else:
+        out = o.decode('utf-8')
+    return out
+        
+def updateGit( url, dirname, branch,  root ):
+        with cd( root ):
+            p = pathlib.Path( dirname )
+            if ( branch ):
+                bs = " --branch " + branch
+            else:
+                bs = ""
+            if not p.is_dir():
+                print("cloning {0} from url {1} root {2}".format( dirname, url, root ), 'git command', GIT_CMD)
+                    
+                cmd = GIT_CMD + " clone " + bs + " " + url + " " + dirname 
+                o = runCommand( cmd )
+                print(o)
+            else:
+                print("git directory exists")
+
+            with cd( dirname ):
+                print("Executing git pull")
+                o = runCommand(GIT_CMD + " pull")
+                print(o)
+
 EXAMTITLE = COURSE + ' - ' + EXAMTYPE  + ' - ' + UNIVERSITY + ' - ' + str(YEAR)
+EXAMDIR = pathlib.Path("./Examinations")
 
-vars = {
-    'NTNU-ERC' : { 'ROOTDIR': 'D:/OneDrive - dkclauson003/OneDrive/Machine Learning/' + EXAMTITLE,
-                   'EXAMDIR': 'D:/OneDrive - dkclauson003/OneDrive/Examinations',
-               }, 
-    'I157000': { 'ROOTDIR': 'C:/Users/mrkwss007/OneDrive/SharedWithAliases/Documents/Teaching/Courses/Machine Learning/' + EXAMTITLE,
-                 'EXAMDIR': 'C:/Users/mrkwss007/OneDrive/SharedWithAliases/Documents/Teaching/Examinations',
-               },
-    'DESKTOP-1N7BG4A' : {
-                'ROOTDIR': 'D:/OneDrive - negrin006/OneDrive/Machine Learning/' + EXAMTITLE,
-                'EXAMDIR': 'D:/OneDrive - negrin006/OneDrive/Examinations',
-    }
-}
+updateGit( "https://github.com/abthil023/Examinations.git", EXAMDIR.name, None, EXAMDIR.parent )
 
-host = os.getenv('HOSTNAME', os.getenv('COMPUTERNAME', platform.node())).split('.')[0]
-
-paths = vars[host]
-
-ROOTDIR = Path( paths['ROOTDIR'] )
-EXAMDIR = Path( paths['EXAMDIR'] )
+for d in [ pathlib.Path(EXAMTITLE), pathlib.Path(COURSE) / EXAMTITLE, pathlib.Path("/courses") / COURSE / EXAMTITLE, pathlib.Path(".")  ]:
+    if d.is_dir() and pathlib.Path(d / pathlib.Path( EXAMTITLE + ".py" ) ).exists():
+        ROOTDIR = d.resolve()
+        break
 
 if ( ROOTDIR is None ) or ( EXAMDIR is None ):
     print("ERROR: Unable to find ROOTDIR", ROOTDIR, "or EXAMDIR", EXAMDIR)
@@ -46,13 +82,13 @@ TEMPLATEDIR = EXAMDIR  / 'Templates'
 CODEDIR = ROOTDIR / 'Code'
 STYLES = TEMPLATEDIR / 'exam_template.css'
 
-codePaths = [ Path('.' + '/' + 'Code' ).resolve(),
-              CODEDIR,
-              CODEDIR / '..' / '..' /  'Code' ]
+codePaths = [ pathlib.Path('.' + '/' + 'Code' ).resolve(),
+              pathlib.Path(CODEDIR),
+              pathlib.Path(CODEDIR).parent.parent /  'Code' ]
 
-questionPaths = [ Path('.' + '/' + 'Questions' ).resolve(),
-                  ROOTDIR / 'Questions',
-                  ROOTDIR  / '..' / 'Questions' ]
+questionPaths = [ pathlib.Path('.' + '/' + 'Questions' ).resolve(),
+                  pathlib.Path(ROOTDIR) / 'Questions',
+                  pathlib.Path(ROOTDIR).parent / 'Questions' ]
 
 #for k in os.environ:
 #    print('k', k, '=', os.environ[k] )
@@ -60,7 +96,7 @@ questionPaths = [ Path('.' + '/' + 'Questions' ).resolve(),
 PYTHON_EXECUTABLE = sys.executable
 VERBOSE = '-v -v'
 
-examPath = Path('.' + '/' + EXAMTITLE + ".py").resolve()
+examPath = pathlib.Path('.' + '/' + EXAMTITLE + ".py").resolve()
 print('+++ examPath', examPath )
 
 commandLine = PYTHON_EXECUTABLE \
@@ -72,10 +108,11 @@ commandLine = PYTHON_EXECUTABLE \
 
 for q in questionPaths:
     print('q',q)
-    commandLine = commandLine + ' -r ' + '"' + str(q) + '"' + ' '
+    commandLine = commandLine + ' -r ' + '"' + str( q.resolve() ) + '"' + ' '
 
 for c in codePaths:
-    commandLine = commandLine + ' -r ' + '"' + str(c) + '"' + ' '
+    commandLine = commandLine + ' -r ' + '"' + str( c.resolve() ) + '"' + ' '
 
 print('Command line', commandLine )
-os.system( commandLine )
+o = runCommand( commandLine )
+print(o)
